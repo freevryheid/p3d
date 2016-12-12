@@ -20,6 +20,7 @@ let
     SDL_WINDOW_OPENGL or SDL_WINDOW_RESIZABLE)
   ctx = win.glCreateContext()
   dt = 0.001  # physics time step (s)
+  COR = 0.25  # coef. of restitution
 
 var
   evt = sdl2.defaultEvent
@@ -47,7 +48,7 @@ proc
   glMatrixMode(GL_MODELVIEW)
 
 proc
-  init() =
+  initGL() =
   var
     mat_specular: array[4, GLfloat] = [GLfloat(1.0), GLfloat(1.0), GLfloat(1.0), GLfloat(1.0)]
     mat_shininess: GLfloat = 50.0
@@ -122,55 +123,61 @@ proc
   mould()
 
 proc
-  disk_collide(s: var Sphere) =
+  dskCollide(s: var Sphere) =
   if s.position.z - s.radius <= 0:
-    var d = s.position.z - s.radius
-    var n = s.velocity
-    s.position.z = s.radius
+    var
+      d = s.position.z - s.radius
+      n = s.velocity
     n.normalize()
+    s.position.z = s.radius - d/2  # move sphere out of disk 
+    s.momentum.z *= -COR  # restitution
     s.force += n*s.force
 
 proc
-  cyl_collide(s: Sphere) =
+  cylCollide(s: Sphere) =
   discard
 
 proc
-  collide(s1, s2: Sphere): bool =
-  if sqrt(
-    (s1.position.x-s2.position.x)*(s1.position.x-s2.position.x)+
-    (s1.position.y-s2.position.y)*(s1.position.y-s2.position.y)+
-    (s1.position.z-s2.position.z)*(s1.position.z-s2.position.z))<=(s1.radius+s2.radius):
-    return true
+  spheresCollide(s1, s2: Sphere): float =
+  var
+    d2 = sqrLen(s2.position-s1.position)
+    r2 = (s1.radius+s2.radius)
+  r2 *= r2
+  if d2<=r2:
+    echo "sphere collide"
+    return sqrt(d)
   else:
-    return false
+    return 0.0
 
 proc
-  dyn_collide(s: Sphere) =
-  for sph in Spheres:
+  sphCollide(s: var Sphere) =
+  for sph in Spheres.mitems:
     if s.id != sph.id:
-      if collide(s, sph):
+      if spheresCollide(s, sph):
         var n = s.velocity-sph.velocity
         n.normalize()
         s.force += n*s.force
-        sph.force += n*s.force
+        #sph.force += n*sph.force
 
 proc collisions(s: var Sphere) =
-  disk_collide(s)
-  cyl_collide(s)
-  dyn_collide(s)
+  s.dskCollide()
+  s.cylCollide()
+  s.sphCollide()
 
 # world
-var s1, s2: Sphere
-s1.init()
-s1.id = 0
-s2.init()
-s2.id = 1
-s2.position.z += 0.1
-s2.position.x += 0.001
+var
+  s1, s2: Sphere
+s1.init(0.005)
+s1.position.z += 0.150
+s1.quad()
+s2.init(0.005)
+s2.position.z += 0.17
+s2.position.x += 0.003
+s2.quad()
 Spheres.add(s1)
 Spheres.add(s2)
 
-init()
+initGL()
 reshape(width, height)
 
 while run:
@@ -183,6 +190,9 @@ while run:
   if update:  # update physics
     for s in Spheres.mitems:
       collisions(s)
+      # echo "position: ", s.position.z
+      # echo "force: ", s.force.z
+      # echo "momentum: ", s.momentum.z
       s.update(total_time, dt)
       s.render()
     total_time += dt

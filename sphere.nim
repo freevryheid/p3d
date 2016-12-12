@@ -43,6 +43,9 @@ type
     spin: Quaternion                # spin is the derivative of the orientation quaternion.
     torque: Vector3d                # torque is the derivative of angular momentum.
 
+var
+   counter = 0
+
 proc
   recalculate(s: var Sphere) =
   # recalculate secondary state values from primary values.
@@ -50,28 +53,35 @@ proc
   s.angularVelocity = s.angularMomentum * s.inverseInertiaTensor
   s.orientation = s.orientation.normalize()
   s.spin = 0.5 * quaternion(0, s.angularVelocity.x, s.angularVelocity.y, s.angularVelocity.z) * s.orientation
-  var translation: Matrix3d = s.position.move()
-  s.bodyToWorld = translation * s.orientation.matrix()
-  s.worldToBody = s.bodyToWorld.inverse()
+  #var translation: Matrix3d = s.position.move()
+  #s.bodyToWorld = translation * s.orientation.matrix()
+  #s.worldToBody = s.bodyToWorld.inverse()
 
 proc
-  init*(s: var Sphere) =
-  s.radius = 0.005
+  init*(s: var Sphere, radius: float) =
+  s.radius = radius
   var V=4.0/3.0*PI*s.radius*s.radius*s.radius
   s.mass = 2650.0*V
   s.inverseMass = 1.0 / s.mass
-  s.force = vector3d(0.0,0.0,-9.81*s.mass)
+  s.force = vector3d(0.0,0.0,0.0)
   s.torque = vector3d(0.0,0.0,0.0)
-  s.position = vector3d(0.0,0.0,0.15)
+  s.position = vector3d(0.0,0.0,0.0)
   s.momentum = vector3d(0.0,0.0,0.0)
   s.orientation = IDQUAT
   s.angularMomentum = vector3d(0.0,0.0,0.0)
   s.inertiaTensor = 2.0/5.0 * s.mass * s.radius*s.radius
   s.inverseInertiaTensor = 1.0 / s.inertiaTensor
   s.recalculate()
+  #s.quad = gluNewQuadric()
+  #gluQuadricDrawStyle(s.quad, GLEnum(GLU_LINE))
+
+proc
+  quad*(s: var Sphere) =
   s.quad = gluNewQuadric()
   gluQuadricDrawStyle(s.quad, GLEnum(GLU_LINE))
-
+  s.id = counter
+  inc counter
+  
 proc
   render*(s: Sphere) =
   glPushMatrix()
@@ -89,8 +99,8 @@ proc
 # timestep so we need our force values to supply the curvature.
 proc
   forces(s: var Sphere, t: float) =
-    discard
-  # s.force.z = -s.mass*9.81  # gravity force
+  #discard
+  s.force.z = -s.mass*9.81  # gravity force
 
 # Evaluate all derivative values for the physics state at time t.
 # @param state the physics state of the sphere.
@@ -108,7 +118,7 @@ proc
 proc
   evaluate(s: var Sphere, t, dt: float, derivative: Derivative): Derivative =
   var ss: Sphere
-  ss.init()
+  ss.init(s.radius)
   ss.position = s.position + derivative.velocity * dt
   ss.momentum = s.momentum + derivative.force * dt
   ss.orientation = s.orientation + derivative.spin * dt
