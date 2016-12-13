@@ -129,7 +129,7 @@ proc
       d = s.position.z - s.radius
       n = s.velocity
     n.normalize()
-    s.position.z = s.radius - d/2  # move sphere out of disk 
+    s.position.z = s.radius - d/2  # move sphere out of disk
     s.momentum.z *= -COR  # restitution
     s.force += n*s.force
 
@@ -140,24 +140,29 @@ proc
 proc
   spheresCollide(s1, s2: Sphere): float =
   var
-    d2 = sqrLen(s2.position-s1.position)
-    r2 = (s1.radius+s2.radius)
-  r2 *= r2
-  if d2<=r2:
-    echo "sphere collide"
-    return sqrt(d)
-  else:
-    return 0.0
+    d = len(s2.position-s1.position)
+    r = (s1.radius+s2.radius)
+  return d-r
 
 proc
   sphCollide(s: var Sphere) =
   for sph in Spheres.mitems:
     if s.id != sph.id:
-      if spheresCollide(s, sph):
-        var n = s.velocity-sph.velocity
+      var d = spheresCollide(s, sph)
+      if d <= 0:
+        var
+          rv = sph.velocity-s.velocity # relative velocity
+          n = m
         n.normalize()
-        s.force += n*s.force
-        #sph.force += n*sph.force
+        var rvn = dot(m, n) # relative velocity in terms of the normal direction
+        if rvn > 0: # colliding (not seperating <0 or at rest =0)
+          
+        # s.position -= n*d/2
+        # # m1_before + m2_before = m1_after+m2_after
+        # # m1_after = (m1_before + m2_before) - m2_after
+        # s.momentum += sph.momentum
+        # s.force += n*s.force
+        # s.torque += cross(s.force, s.position)
 
 proc collisions(s: var Sphere) =
   s.dskCollide()
